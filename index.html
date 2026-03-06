@@ -34,13 +34,10 @@ const ctx = canvas.getContext('2d');
 const W = 480, H = 640;
 canvas.width = W; canvas.height = H;
 
-// ========== НАСТРОЙКИ ИГРЫ ==========
 const CONFIG = {
   basketWidth: 110,
   basketHeight: 50,
   basketY: H - 100,
-  catchZoneTop: 20, // Где начинается зона ловли внутри корзины
-  catchZoneBottom: 45, // Где заканчивается зона ловли
   maxWords: 5,
   spawnInterval: 1050,
   baseSpeed: 1.7,
@@ -48,7 +45,6 @@ const CONFIG = {
   targetScore: 10
 };
 
-// ========== УРОВНИ С РАЗНЫМИ ПОДЛЕЖАЩИМИ ==========
 const LEVELS = [
   {
     name: 'Level 1',
@@ -98,10 +94,9 @@ const LEVELS = [
   }
 ];
 
-// ========== СОСТОЯНИЕ ИГРЫ ==========
 let state = 'START';
 let currentLevel = 0;
-let currentStage = 0; // Номер этапа внутри уровня
+let currentStage = 0;
 let lives = 3;
 let score = 0;
 let caught = 0;
@@ -112,7 +107,6 @@ let totalBad = 0;
 let timer = 60;
 let basketX = W/2 - CONFIG.basketWidth/2;
 let mouseX = W/2;
-let mouseY = H/2;
 let keyLeft = false;
 let keyRight = false;
 let words = [];
@@ -130,13 +124,11 @@ let savedStats = {};
 let buttons = {};
 let lastTime = 0;
 
-// ========== ЗАГРУЗКА ИЗОБРАЖЕНИЯ ==========
 const bakerImg = new Image();
 bakerImg.src = 'baker.png';
 let bakerImgLoaded = false;
 bakerImg.onload = () => { bakerImgLoaded = true; };
 
-// ========== УТИЛИТЫ ==========
 function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -170,7 +162,6 @@ function getCurrentStage() {
   return LEVELS[currentLevel].stages[currentStage];
 }
 
-// ========== ПУЛ СЛОВ ==========
 function buildWordPool() {
   const stage = getCurrentStage();
   const correct = shuffle([...stage.correct]);
@@ -195,7 +186,6 @@ function getNextWord() {
   return pool[poolIndex++];
 }
 
-// ========== СПАВН СЛОВ ==========
 function measureTextWidth(text) {
   ctx.font = 'bold 15px Nunito,sans-serif';
   return ctx.measureText(text).width + 36;
@@ -222,7 +212,6 @@ function spawnWord() {
   });
 }
 
-// ========== ОТРИСОВКА ФОНА ==========
 function drawBackground() {
   const wallGradient = ctx.createLinearGradient(0, 0, 0, H);
   wallGradient.addColorStop(0, '#3b2010');
@@ -383,7 +372,6 @@ function drawSign() {
   ctx.restore();
 }
 
-// ========== КРУАССАН СЛОВА ==========
 function drawCroissantWord(word) {
   ctx.save();
   const cx = word.x + word.w / 2;
@@ -437,13 +425,11 @@ function drawCroissantWord(word) {
   ctx.restore();
 }
 
-// ========== КОРЗИНА С ПЕРСОНАЖЕМ ==========
 function drawBasket() {
   const x = basketX;
   const y = CONFIG.basketY;
   const bob = Math.sin(Date.now() * 0.005) * 3;
 
-  // === ОТРИСОВКА ПЕРСОНАЖА-ПЕКАРЯ ===
   ctx.save();
   ctx.translate(x + CONFIG.basketWidth/2, y - 20 + bob);
   ctx.scale(0.85, 0.85);
@@ -455,11 +441,9 @@ function drawBasket() {
   }
   ctx.restore();
 
-  // === РИСОВАНИЕ РУК ПЕКАРЯ ===
   ctx.save();
   ctx.translate(x, y);
   
-  // Левая рука
   ctx.strokeStyle = '#fdbf60';
   ctx.lineWidth = 10;
   ctx.lineCap = 'round';
@@ -468,13 +452,11 @@ function drawBasket() {
   ctx.lineTo(20, 15);
   ctx.stroke();
   
-  // Правая рука
   ctx.beginPath();
   ctx.moveTo(CONFIG.basketWidth - 15, -10);
   ctx.lineTo(CONFIG.basketWidth - 20, 15);
   ctx.stroke();
   
-  // Кисти рук
   ctx.fillStyle = '#fdbf60';
   ctx.beginPath();
   ctx.arc(20, 15, 7, 0, Math.PI * 2);
@@ -482,7 +464,6 @@ function drawBasket() {
   ctx.fill();
   ctx.restore();
 
-  // Корзина
   ctx.save();
   ctx.translate(x, y);
   
@@ -502,7 +483,6 @@ function drawBasket() {
   ctx.fill();
   ctx.shadowBlur = 0;
   
-  // Плетение корзины
   ctx.strokeStyle = 'rgba(0,0,0,.18)';
   ctx.lineWidth = 1;
   for (let i = 8; i < CONFIG.basketWidth - 8; i += 8) {
@@ -519,7 +499,6 @@ function drawBasket() {
   }
   ctx.restore();
 
-  // Ручка корзины
   ctx.save();
   ctx.translate(x, y);
   ctx.strokeStyle = '#8b6914';
@@ -536,12 +515,10 @@ function drawBasket() {
   ctx.stroke();
   ctx.restore();
 
-  // === ДИНАМИЧЕСКАЯ ПОДПИСЬ НА КОРЗИНЕ ===
   const stage = getCurrentStage();
   ctx.font = 'bold 11px "Fredoka One",cursive';
   const label = stage.subject;
   const lw = ctx.measureText(label).width + 12;
-  const lx = x + CONFIG.basketWidth/2 - lw/2;
   const ly = y + CONFIG.basketHeight/2 + 5;
   
   ctx.fillStyle = 'rgba(255,240,200,.98)';
@@ -550,7 +527,6 @@ function drawBasket() {
   ctx.textAlign = 'left';
 }
 
-// Резервная функция для отрисовки пекаря
 function drawFallbackBaker(x, y) {
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -593,7 +569,6 @@ function drawFallbackBaker(x, y) {
   ctx.strokeRect(x - 30, y - 40, 60, 50);
 }
 
-// ========== HUD ==========
 function drawHUD() {
   ctx.fillStyle = 'rgba(30,10,0,.65)';
   ctx.fillRect(0, 0, W, 48);
@@ -668,7 +643,6 @@ function drawHUD() {
   }
 }
 
-// ========== ЭФФЕКТЫ ==========
 function burst(x, y, color) {
   for (let i = 0; i < 18; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -734,7 +708,6 @@ function drawFloats() {
   ctx.textAlign = 'left';
 }
 
-// ========== ЭКРАНЫ ==========
 function drawButton(x, y, w, h, label, c1, c2, textColor, id) {
   const g = ctx.createLinearGradient(x, y, x + w, y + h);
   g.addColorStop(0, c1);
@@ -827,7 +800,6 @@ function drawStartScreen() {
   const cardHeight = 75;
   const cardX = (W - cardWidth) / 2;
   
-  // Level 1
   ctx.save();
   ctx.fillStyle = 'rgba(224,123,57,.15)';
   roundRect(ctx, cardX, 220, cardWidth, cardHeight, 12);
@@ -848,7 +820,6 @@ function drawStartScreen() {
   ctx.fillText('She/He/It ___ (verbs with -s)', cardX + 25, 275);
   ctx.restore();
   
-  // Level 2
   ctx.save();
   ctx.fillStyle = 'rgba(192,57,43,.15)';
   roundRect(ctx, cardX, 315, cardWidth, cardHeight, 12);
@@ -921,8 +892,8 @@ function drawLevelClearScreen() {
   
   drawStatBox(savedStats);
   
-  const stage = getCurrentStage();
-  const nextText = currentStage + 1 >= stage.stages.length ? '🏆  Finish!' : 'Next Stage  ➡';
+  const level = LEVELS[currentLevel];
+  const nextText = currentStage + 1 >= level.stages.length ? '🏆  Finish!' : 'Next Stage  ➡';
   drawButton(W/2 - 100, 500, 200, 52, nextText, '#e07b39', '#c0392b', '#fff', 'NEXT');
   ctx.textAlign = 'left';
 }
@@ -973,7 +944,6 @@ function drawWinScreen() {
   ctx.textAlign = 'left';
 }
 
-// ========== ИГРОВАЯ ЛОГИКА ==========
 function onCatch(word) {
   const fx = basketX + CONFIG.basketWidth/2;
   const fy = CONFIG.basketY - 30;
@@ -1140,7 +1110,6 @@ function showStart() {
   words = [];
 }
 
-// ========== ОБРАБОТКА ВВОДА ==========
 function hitTest(cx, cy, button) {
   return button && cx >= button.x && cx <= button.x + button.w && 
          cy >= button.y && cy <= button.y + button.h;
@@ -1177,7 +1146,6 @@ function handleClick(cx, cy) {
   }
 }
 
-// ========== ГЛАВНЫЙ ЦИКЛ ==========
 function loop(timestamp) {
   rafId = requestAnimationFrame(loop);
   const dt = Math.min((timestamp - lastTime) / 16.67, 3);
@@ -1225,11 +1193,13 @@ function loop(timestamp) {
   const targetX = Math.max(0, Math.min(W - CONFIG.basketWidth - 2, mouseX - CONFIG.basketWidth/2));
   basketX += (targetX - basketX) * 0.18 * dt;
 
-  // ИСПРАВЛЕНО: ЗОНА ЛОВЛИ - точно внутри корзины
-  const catchTop = CONFIG.basketY + CONFIG.catchZoneTop;
-  const catchBottom = CONFIG.basketY + CONFIG.catchZoneBottom;
-  const catchLeft = basketX + 10;
-  const catchRight = basketX + CONFIG.basketWidth - 10;
+  // ============================================
+  // ИСПРАВЛЕНО: ЗОНА ЛОВЛИ - КРУАССАН ПАДАЕТ В ОТВЕРСТИЕ
+  // ============================================
+  const catchLeft = basketX + 8;
+  const catchRight = basketX + CONFIG.basketWidth - 8;
+  const catchTop = CONFIG.basketY - 15; // Чуть выше верха корзины
+  const catchBottom = CONFIG.basketY + 25; // Внутри корзины
 
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
@@ -1237,10 +1207,13 @@ function loop(timestamp) {
     w.angle += w.spin;
     
     const bottom = w.y + w.h;
+    const top = w.y;
+    const center = w.y + w.h / 2;
     const mid = w.x + w.w / 2;
     
-    // Проверяем попадает ли круассан В корзину (не сверху, а внутрь)
-    if (bottom >= catchTop && bottom <= catchBottom && mid >= catchLeft && mid <= catchRight) {
+    // Проверяем: круассан пересекает верх корзины И находится по горизонтали внутри
+    if (center >= catchTop && center <= catchBottom && 
+        mid >= catchLeft && mid <= catchRight) {
       words.splice(i, 1);
       onCatch(w);
     } else if (w.y > H + 20) {
@@ -1263,7 +1236,6 @@ function loop(timestamp) {
   ctx.restore();
 }
 
-// ========== СОБЫТИЯ ==========
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   handleClick(
@@ -1297,23 +1269,19 @@ window.addEventListener('keyup', e => {
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.clientX - rect.left) * (W / rect.width);
-  mouseY = (e.clientY - rect.top) * (H / rect.height);
 });
 
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
 }, { passive: false });
 
 canvas.addEventListener('touchstart', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
 }, { passive: true });
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
 resize();
 window.addEventListener('resize', resize);
 requestAnimationFrame(loop);
