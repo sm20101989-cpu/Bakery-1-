@@ -31,7 +31,7 @@
 <script>
 /**
  * GRAMMAR BAKERY - Образовательная игра
- * Улучшенная версия с оптимизацией и комментариями
+ * Версия с персонажем-пекарем
  */
 
 const canvas = document.getElementById('gameCanvas');
@@ -41,9 +41,9 @@ canvas.width = W; canvas.height = H;
 
 // ========== НАСТРОЙКИ ИГРЫ ==========
 const CONFIG = {
-  basketWidth: 90,
-  basketHeight: 38,
-  basketY: H - 100,
+  basketWidth: 140,
+  basketHeight: 60,
+  basketY: H - 110,
   maxWords: 5,
   spawnInterval: 1050,
   baseSpeed: 1.7,
@@ -101,8 +101,11 @@ let savedStats = {};
 let buttons = {};
 let lastTime = 0;
 
-// ========== ЗАМЕНИТЕ ПЕРСОНАЖА ЗДЕСЬ ==========
-const PLAYER_CHARACTER = '🧒'; // ← Измените на нужного персонажа (например: '👨‍🍳', '', '', '🤖')
+// ========== ЗАГРУЗКА ИЗОБРАЖЕНИЯ ПЕРСОНАЖА ==========
+const bakerImg = new Image();
+bakerImg.src = 'baker.png'; // Сохраните изображение как baker.png
+let bakerImgLoaded = false;
+bakerImg.onload = () => { bakerImgLoaded = true; };
 
 // ========== УТИЛИТЫ ==========
 function shuffle(array) {
@@ -188,7 +191,6 @@ function spawnWord() {
 
 // ========== ОТРИСОВКА ФОНА ==========
 function drawBackground() {
-  // Стена с градиентом
   const wallGradient = ctx.createLinearGradient(0, 0, 0, H);
   wallGradient.addColorStop(0, '#3b2010');
   wallGradient.addColorStop(0.55, '#4a2a14');
@@ -196,7 +198,6 @@ function drawBackground() {
   ctx.fillStyle = wallGradient;
   ctx.fillRect(0, 0, W, H);
 
-  // Кирпичная кладка
   ctx.save();
   ctx.globalAlpha = 0.18;
   const brickW = 52, brickH = 22;
@@ -212,28 +213,17 @@ function drawBackground() {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // Окно-печь с подсветкой
   drawOvenWindow();
-  
-  // Полки
   drawShelf(10, 220, 120);
   drawShelf(350, 220, 120);
-  
-  // Еда на полках
   drawBreadItem(22, 207, '🍞');
   drawBreadItem(64, 207, '🥖');
   drawBreadItem(362, 207, '🧁');
   drawBreadItem(404, 207, '🍰');
-
-  // Стойка и пол
   drawCounter();
-  
-  // Подвесные светильники
   drawLight(80, 0, 160);
   drawLight(W/2, 0, 155);
   drawLight(W-80, 0, 162);
-
-  // Вывеска
   drawSign();
 }
 
@@ -252,13 +242,11 @@ function drawOvenWindow() {
   ctx.fill();
   ctx.shadowBlur = 0;
   
-  // Шторы
   ctx.fillStyle = '#c0392b';
   ctx.fillRect(archX - 5, archY, 18, archH + 5);
   ctx.fillRect(archX + archW - 13, archY, 18, archH + 5);
   ctx.restore();
 
-  // Свечение от окна
   const glow = ctx.createRadialGradient(W/2, archY + archH, 5, W/2, archY + archH, 200);
   glow.addColorStop(0, 'rgba(255,200,80,0.22)');
   glow.addColorStop(1, 'rgba(255,200,80,0)');
@@ -370,11 +358,9 @@ function drawCroissantWord(word) {
   ctx.translate(cx, cy);
   ctx.rotate(word.angle);
 
-  // Тень
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = 8;
 
-  // Тело круассана
   const cg = ctx.createLinearGradient(-word.w/2, -word.h/2, word.w/2, word.h/2);
   cg.addColorStop(0, '#f5c842');
   cg.addColorStop(0.4, '#e8a020');
@@ -385,7 +371,6 @@ function drawCroissantWord(word) {
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Рога круассана
   ctx.fillStyle = '#d4860e';
   ctx.beginPath();
   ctx.ellipse(-word.w/2 + 8, 0, 10, word.h/2 - 4, 0.3, 0, Math.PI * 2);
@@ -394,13 +379,11 @@ function drawCroissantWord(word) {
   ctx.ellipse(word.w/2 - 8, 0, 10, word.h/2 - 4, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Блеск глазури
   ctx.fillStyle = 'rgba(255,230,100,.35)';
   ctx.beginPath();
   ctx.ellipse(-word.w/8, -word.h/5, word.w/5, word.h/6, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Насечки
   ctx.strokeStyle = 'rgba(150,70,0,.4)';
   ctx.lineWidth = 1;
   for (let i = -1; i <= 1; i++) {
@@ -410,7 +393,6 @@ function drawCroissantWord(word) {
     ctx.stroke();
   }
 
-  // Текст
   ctx.font = 'bold 15px Nunito,sans-serif';
   ctx.fillStyle = '#3b1a00';
   ctx.shadowColor = 'rgba(255,200,80,.6)';
@@ -428,24 +410,32 @@ function drawBasket() {
   const y = CONFIG.basketY;
   const bob = Math.sin(Date.now() * 0.005) * 3;
 
-  // === ПЕРСОНАЖ (ЗАМЕНИТЕ ЗДЕСЬ) ===
-  ctx.font = '34px serif';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0,0,0,.4)';
-  ctx.shadowBlur = 6;
-  ctx.fillText(PLAYER_CHARACTER, x + CONFIG.basketWidth/2, y - 14 + bob);
-  ctx.shadowBlur = 0;
+  // === ОТРИСОВКА ПЕРСОНАЖА-ПЕКАРЯ ===
+  ctx.save();
+  ctx.translate(x + CONFIG.basketWidth/2, y - 20 + bob);
+  ctx.scale(0.9, 0.9);
+  
+  if (bakerImgLoaded) {
+    // Рисуем загруженное изображение
+    ctx.drawImage(bakerImg, -60, -110, 120, 120);
+  } else {
+    // Резервный вариант - рисуем упрощенного пекаря
+    drawFallbackBaker(0, 0);
+  }
+  ctx.restore();
 
   // Корзина
   ctx.save();
+  ctx.translate(x, y);
+  
   ctx.beginPath();
-  ctx.moveTo(x + 6, y + 2);
-  ctx.lineTo(x + CONFIG.basketWidth - 6, y + 2);
-  ctx.lineTo(x + CONFIG.basketWidth - 14, y + CONFIG.basketHeight + 8);
-  ctx.lineTo(x + 14, y + CONFIG.basketHeight + 8);
+  ctx.moveTo(6, 2);
+  ctx.lineTo(CONFIG.basketWidth - 6, 2);
+  ctx.lineTo(CONFIG.basketWidth - 14, CONFIG.basketHeight + 8);
+  ctx.lineTo(14, CONFIG.basketHeight + 8);
   ctx.closePath();
   
-  const bg = ctx.createLinearGradient(0, y, 0, y + CONFIG.basketHeight + 8);
+  const bg = ctx.createLinearGradient(0, 0, 0, CONFIG.basketHeight + 8);
   bg.addColorStop(0, '#c87941');
   bg.addColorStop(1, '#8b4513');
   ctx.fillStyle = bg;
@@ -454,46 +444,51 @@ function drawBasket() {
   ctx.fill();
   ctx.shadowBlur = 0;
   
-  // Плетение
   ctx.strokeStyle = 'rgba(0,0,0,.18)';
   ctx.lineWidth = 1;
   for (let i = 8; i < CONFIG.basketWidth - 8; i += 10) {
     ctx.beginPath();
-    ctx.moveTo(x + i, y + 2);
-    ctx.lineTo(x + i, y + CONFIG.basketHeight + 8);
+    ctx.moveTo(i, 2);
+    ctx.lineTo(i, CONFIG.basketHeight + 8);
     ctx.stroke();
   }
   for (let j = 8; j < CONFIG.basketHeight + 6; j += 8) {
     ctx.beginPath();
-    ctx.moveTo(x + 6, y + j);
-    ctx.lineTo(x + CONFIG.basketWidth - 6, y + j);
+    ctx.moveTo(6, j);
+    ctx.lineTo(CONFIG.basketWidth - 6, j);
     ctx.stroke();
   }
   ctx.restore();
 
-  // Ободок
-  const rimG = ctx.createLinearGradient(0, y, 0, y + 12);
-  rimG.addColorStop(0, '#e8a020');
-  rimG.addColorStop(1, '#c87941');
-  ctx.fillStyle = rimG;
-  ctx.shadowColor = 'rgba(0,0,0,.25)';
-  ctx.shadowBlur = 5;
-  roundRect(ctx, x, y, CONFIG.basketWidth, 12, 6);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  // Ручка корзины
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(CONFIG.basketWidth/2, 10, 35, Math.PI, 0);
+  ctx.stroke();
+  
+  ctx.strokeStyle = '#c87941';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(CONFIG.basketWidth/2, 10, 35, Math.PI, 0);
+  ctx.stroke();
+  ctx.restore();
 
   // Эффект вспышки
   if (flashTimer > 0) {
     ctx.globalAlpha = Math.min(flashTimer / 10, 0.5);
     ctx.fillStyle = '#00e676';
-    roundRect(ctx, x, y, CONFIG.basketWidth, CONFIG.basketHeight + 12, 6);
+    roundRect(ctx, x, y - 80, CONFIG.basketWidth, CONFIG.basketHeight + 90, 6);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
   if (flashTimer < 0) {
     ctx.globalAlpha = Math.min(-flashTimer / 10, 0.5);
     ctx.fillStyle = '#ff1744';
-    roundRect(ctx, x, y, CONFIG.basketWidth, CONFIG.basketHeight + 12, 6);
+    roundRect(ctx, x, y - 80, CONFIG.basketWidth, CONFIG.basketHeight + 90, 6);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -503,7 +498,7 @@ function drawBasket() {
   ctx.font = 'bold 13px "Fredoka One",cursive';
   const lw = ctx.measureText(level.label).width + 20;
   const lx = Math.max(4, Math.min(W - lw - 4, x + CONFIG.basketWidth/2 - lw/2));
-  const ly = y - 46;
+  const ly = y - 115;
   
   ctx.shadowColor = 'rgba(0,0,0,.3)';
   ctx.shadowBlur = 6;
@@ -518,9 +513,58 @@ function drawBasket() {
   ctx.textAlign = 'left';
 }
 
+// Резервная функция для отрисовки пекаря (если изображение не загрузилось)
+function drawFallbackBaker(x, y) {
+  // Тело
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 20, 45, 50, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Голова
+  ctx.fillStyle = '#fdbf60';
+  ctx.beginPath();
+  ctx.arc(x, y - 75, 30, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Поварской колпак
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x, y - 100, 35, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(x - 25, y - 105, 50, 20);
+  
+  // Улыбка
+  ctx.strokeStyle = '#8b4513';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y - 70, 15, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  
+  // Усы
+  ctx.fillStyle = '#654321';
+  ctx.beginPath();
+  ctx.ellipse(x - 12, y - 68, 10, 4, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(x + 12, y - 68, 10, 4, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Глаза
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(x - 12, y - 82, 4, 0, Math.PI * 2);
+  ctx.arc(x + 12, y - 82, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Фартук
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x - 30, y - 40, 60, 50);
+  ctx.strokeStyle = '#c87941';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 30, y - 40, 60, 50);
+}
+
 // ========== HUD ==========
 function drawHUD() {
-  // Верхняя панель
   ctx.fillStyle = 'rgba(30,10,0,.65)';
   ctx.fillRect(0, 0, W, 48);
   ctx.strokeStyle = 'rgba(200,120,40,.4)';
@@ -530,7 +574,6 @@ function drawHUD() {
   ctx.lineTo(W, 48);
   ctx.stroke();
 
-  // Жизни
   ctx.font = '20px serif';
   for (let i = 0; i < 3; i++) {
     ctx.globalAlpha = i < lives ? 1 : 0.22;
@@ -538,7 +581,6 @@ function drawHUD() {
   }
   ctx.globalAlpha = 1;
 
-  // Счет и время
   ctx.font = 'bold 16px "Fredoka One",cursive';
   ctx.shadowColor = 'rgba(0,0,0,.6)';
   ctx.shadowBlur = 4;
@@ -554,7 +596,6 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
 
-  // Название уровня
   const level = LEVELS[currentLevel];
   ctx.font = 'bold 12px Nunito,sans-serif';
   const nw = ctx.measureText(level.name).width + 22;
@@ -571,7 +612,6 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
 
-  // Прогресс бар
   ctx.fillStyle = 'rgba(255,255,255,.15)';
   roundRect(ctx, 14, 73, W - 28, 7, 4);
   ctx.fill();
@@ -585,7 +625,6 @@ function drawHUD() {
     ctx.fill();
   }
 
-  // Серия
   if (streak >= 2) {
     ctx.font = 'bold 13px "Fredoka One",cursive';
     const sw = ctx.measureText('🔥 x' + streak).width + 18;
@@ -1103,7 +1142,6 @@ function loop(timestamp) {
     return;
   }
 
-  // PLAY STATE
   ctx.save();
   if (shakeTimer > 0) {
     ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
@@ -1112,20 +1150,17 @@ function loop(timestamp) {
 
   drawBackground();
 
-  // Движение корзины
   if (keyLeft) basketX = Math.max(0, basketX - 5 * dt);
   if (keyRight) basketX = Math.min(W - CONFIG.basketWidth - 2, basketX + 5 * dt);
   
   const targetX = Math.max(0, Math.min(W - CONFIG.basketWidth - 2, mouseX - CONFIG.basketWidth/2));
   basketX += (targetX - basketX) * 0.18 * dt;
 
-  // Зона ловли
   const cy1 = CONFIG.basketY + 2;
   const cy2 = CONFIG.basketY + 22;
   const cx1 = basketX + 6;
   const cx2 = basketX + CONFIG.basketWidth - 6;
 
-  // Обновление слов
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
     w.y += w.speed * dt;
