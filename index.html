@@ -38,16 +38,15 @@ const CONFIG = {
   basketWidth: 110,
   basketHeight: 50,
   basketY: H - 90,
-  catchY: H - 85, // ТОЧКА ЛОВЛИ - точно где отверстие корзины
+  catchY: H - 85,
   maxWords: 5,
   spawnInterval: 1050,
   baseSpeed: 1.7,
   levelTime: 60,
   targetScore: 10,
-  switchScore: 5 // Меняем режим каждые 5 очков
+  switchScore: 5
 };
 
-// Чередующиеся режимы
 const MODES = [
   { 
     subject: "🥐  She  ___", 
@@ -150,7 +149,6 @@ function getCurrentMode() {
 function switchMode() {
   currentMode = (currentMode + 1) % MODES.length;
   lastSwitchScore = score;
-  // Очищаем пул и создаем новый для нового режима
   pool = [];
   poolIndex = 0;
 }
@@ -434,7 +432,6 @@ function drawBasket() {
   }
   ctx.restore();
 
-  // Руки
   ctx.save();
   ctx.translate(x, y);
   
@@ -458,7 +455,6 @@ function drawBasket() {
   ctx.fill();
   ctx.restore();
 
-  // Корзина
   ctx.save();
   ctx.translate(x, y);
   
@@ -494,7 +490,6 @@ function drawBasket() {
   }
   ctx.restore();
 
-  // Ручка
   ctx.save();
   ctx.translate(x, y);
   ctx.strokeStyle = '#8b6914';
@@ -511,7 +506,6 @@ function drawBasket() {
   ctx.stroke();
   ctx.restore();
 
-  // Подпись НА корзине (внутри)
   const mode = getCurrentMode();
   ctx.font = 'bold 11px "Fredoka One",cursive';
   const label = mode.subject;
@@ -596,7 +590,6 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
 
-  // Прогресс до смены режима
   const nextSwitch = lastSwitchScore + CONFIG.switchScore;
   const progress = Math.min(1, (score - lastSwitchScore) / CONFIG.switchScore);
   
@@ -883,7 +876,6 @@ function onCatch(word) {
     
     if (streak > bestStreak) bestStreak = streak;
     
-    // Проверяем нужно ли сменить режим
     if (score >= lastSwitchScore + CONFIG.switchScore && score < 50) {
       switchMode();
       addFloat('MODE SWITCH!', '#ffd700', fx, fy - 30);
@@ -1091,12 +1083,9 @@ function loop(timestamp) {
   const targetX = Math.max(0, Math.min(W - CONFIG.basketWidth - 2, mouseX - CONFIG.basketWidth/2));
   basketX += (targetX - basketX) * 0.18 * dt;
 
-  // ============================================
-  // ИСПРАВЛЕНО: КРУАССАНЫ ПАДАЮТ ПРЯМО В КОРЗИНУ
-  // ============================================
   const catchLeft = basketX + 10;
   const catchRight = basketX + CONFIG.basketWidth - 10;
-  const catchZone = CONFIG.catchY; // Точка где ловим
+  const catchZone = CONFIG.catchY;
 
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
@@ -1106,7 +1095,6 @@ function loop(timestamp) {
     const midX = w.x + w.w / 2;
     const midY = w.y + w.h / 2;
     
-    // Ловим когда ЦЕНТР круассана достигает уровня корзины
     if (midY >= catchZone - 5 && midY <= catchZone + 15 && 
         midX >= catchLeft && midX <= catchRight) {
       words.splice(i, 1);
@@ -1122,11 +1110,15 @@ function loop(timestamp) {
   updateParticles();
   updateFloats();
 
-  words.forEach(w => drawCroissantWord(w));
-  drawParticles();
-  drawBasket();
-  drawFloats();
-  drawHUD();
+  // ============================================
+  // ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ПОРЯДОК ОТРИСОВКИ!
+  // Круассаны теперь ПЕРЕД корзиной (на переднем плане)
+  // ============================================
+  drawBasket();           // 1. Сначала корзина с пекарем
+  drawParticles();        // 2. Частицы
+  words.forEach(w => drawCroissantWord(w));  // 3. Круассаны ПОВЕРХ корзины!
+  drawFloats();           // 4. Всплывающий текст
+  drawHUD();              // 5. Интерфейс
 
   ctx.restore();
 }
