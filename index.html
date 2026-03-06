@@ -20,7 +20,7 @@
     border-radius:18px;
     box-shadow:0 10px 60px rgba(0,0,0,0.6), 0 0 0 8px rgba(200,130,60,0.15);
     touch-action:none;
-    cursor: pointer; /* ИСПРАВЛЕНО: курсор видим */
+    cursor: pointer;
     max-width: 100vw;
     max-height: 100vh;
   }
@@ -36,8 +36,8 @@ canvas.width = W; canvas.height = H;
 
 // ========== НАСТРОЙКИ ИГРЫ ==========
 const CONFIG = {
-  basketWidth: 140,
-  basketHeight: 60,
+  basketWidth: 110, // ИСПРАВЛЕНО: уменьшил ширину корзины
+  basketHeight: 50, // ИСПРАВЛЕНО: уменьшил высоту корзины
   basketY: H - 110,
   maxWords: 5,
   spawnInterval: 1050,
@@ -81,7 +81,7 @@ let totalBad = 0;
 let timer = 60;
 let basketX = W/2 - CONFIG.basketWidth/2;
 let mouseX = W/2;
-let mouseY = H/2; // ИСПРАВЛЕНО: добавлена позиция Y
+let mouseY = H/2;
 let keyLeft = false;
 let keyRight = false;
 let words = [];
@@ -411,7 +411,7 @@ function drawBasket() {
   // === ОТРИСОВКА ПЕРСОНАЖА-ПЕКАРЯ ===
   ctx.save();
   ctx.translate(x + CONFIG.basketWidth/2, y - 20 + bob);
-  ctx.scale(0.9, 0.9);
+  ctx.scale(0.85, 0.85);
   
   if (bakerImgLoaded) {
     ctx.drawImage(bakerImg, -60, -110, 120, 120);
@@ -420,18 +420,45 @@ function drawBasket() {
   }
   ctx.restore();
 
-  // Корзина
+  // === РИСОВАНИЕ РУК ПЕКАРЯ ===
+  ctx.save();
+  ctx.translate(x, y);
+  
+  // Левая рука (держит корзину слева)
+  ctx.strokeStyle = '#fdbf60';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(15, -10);
+  ctx.lineTo(20, 15);
+  ctx.stroke();
+  
+  // Правая рука (держит корзину справа)
+  ctx.beginPath();
+  ctx.moveTo(CONFIG.basketWidth - 15, -10);
+  ctx.lineTo(CONFIG.basketWidth - 20, 15);
+  ctx.stroke();
+  
+  // Кисти рук
+  ctx.fillStyle = '#fdbf60';
+  ctx.beginPath();
+  ctx.arc(20, 15, 7, 0, Math.PI * 2);
+  ctx.arc(CONFIG.basketWidth - 20, 15, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Корзина (уменьшенная)
   ctx.save();
   ctx.translate(x, y);
   
   ctx.beginPath();
-  ctx.moveTo(6, 2);
-  ctx.lineTo(CONFIG.basketWidth - 6, 2);
-  ctx.lineTo(CONFIG.basketWidth - 14, CONFIG.basketHeight + 8);
-  ctx.lineTo(14, CONFIG.basketHeight + 8);
+  ctx.moveTo(5, 0);
+  ctx.lineTo(CONFIG.basketWidth - 5, 0);
+  ctx.lineTo(CONFIG.basketWidth - 12, CONFIG.basketHeight);
+  ctx.lineTo(12, CONFIG.basketHeight);
   ctx.closePath();
   
-  const bg = ctx.createLinearGradient(0, 0, 0, CONFIG.basketHeight + 8);
+  const bg = ctx.createLinearGradient(0, 0, 0, CONFIG.basketHeight);
   bg.addColorStop(0, '#c87941');
   bg.addColorStop(1, '#8b4513');
   ctx.fillStyle = bg;
@@ -440,18 +467,19 @@ function drawBasket() {
   ctx.fill();
   ctx.shadowBlur = 0;
   
+  // Плетение корзины
   ctx.strokeStyle = 'rgba(0,0,0,.18)';
   ctx.lineWidth = 1;
-  for (let i = 8; i < CONFIG.basketWidth - 8; i += 10) {
+  for (let i = 8; i < CONFIG.basketWidth - 8; i += 8) {
     ctx.beginPath();
-    ctx.moveTo(i, 2);
-    ctx.lineTo(i, CONFIG.basketHeight + 8);
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + 2, CONFIG.basketHeight);
     ctx.stroke();
   }
-  for (let j = 8; j < CONFIG.basketHeight + 6; j += 8) {
+  for (let j = 8; j < CONFIG.basketHeight; j += 7) {
     ctx.beginPath();
-    ctx.moveTo(6, j);
-    ctx.lineTo(CONFIG.basketWidth - 6, j);
+    ctx.moveTo(8, j);
+    ctx.lineTo(CONFIG.basketWidth - 8, j + 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -460,36 +488,29 @@ function drawBasket() {
   ctx.save();
   ctx.translate(x, y);
   ctx.strokeStyle = '#8b6914';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 7;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.arc(CONFIG.basketWidth/2, 10, 35, Math.PI, 0);
+  ctx.arc(CONFIG.basketWidth/2, 8, 30, Math.PI, 0);
   ctx.stroke();
   
   ctx.strokeStyle = '#c87941';
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3.5;
   ctx.beginPath();
-  ctx.arc(CONFIG.basketWidth/2, 10, 35, Math.PI, 0);
+  ctx.arc(CONFIG.basketWidth/2, 8, 30, Math.PI, 0);
   ctx.stroke();
   ctx.restore();
 
-  // ИСПРАВЛЕНО: Подпись перенесена на корзину (вместо лица)
+  // Подпись с уровнем (на корзине)
   const level = LEVELS[currentLevel];
-  ctx.font = 'bold 13px "Fredoka One",cursive';
-  const lw = ctx.measureText(level.label).width + 20;
-  const lx = Math.max(4, Math.min(W - lw - 4, x + CONFIG.basketWidth/2 - lw/2));
-  const ly = y + CONFIG.basketHeight + 15; // ИСПРАВЛЕНО: было y - 115, теперь ниже корзины
+  ctx.font = 'bold 12px "Fredoka One",cursive';
+  const lw = ctx.measureText(level.label).width + 16;
+  const lx = x + CONFIG.basketWidth/2 - lw/2;
+  const ly = y + CONFIG.basketHeight/2 + 6;
   
-  ctx.shadowColor = 'rgba(0,0,0,.3)';
-  ctx.shadowBlur = 6;
   ctx.fillStyle = 'rgba(255,240,200,.95)';
-  roundRect(ctx, lx, ly, lw, 28, 12);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  
-  ctx.fillStyle = '#4a1800';
   ctx.textAlign = 'center';
-  ctx.fillText(level.label, lx + lw/2, ly + 18);
+  ctx.fillText(level.label, x + CONFIG.basketWidth/2, ly);
   ctx.textAlign = 'left';
 }
 
@@ -737,102 +758,101 @@ function drawStatBox(stats) {
   ctx.textAlign = 'left';
 }
 
-// ИСПРАВЛЕНО: Стартовый экран с красивыми карточками уровней
+// ИСПРАВЛЕНО: Эстетичный стартовый экран с минималистичным дизайном
 function drawStartScreen() {
-  ctx.save();
-  ctx.fillStyle = 'rgba(20,8,2,.85)';
+  // Темный фон
+  ctx.fillStyle = 'rgba(15,8,4,.92)';
   ctx.fillRect(0, 0, W, H);
   
-  const vg = ctx.createRadialGradient(W/2, H/2, 80, W/2, H/2, 350);
-  vg.addColorStop(0, 'rgba(180,80,10,.25)');
-  vg.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = vg;
+  // Легкий градиент
+  const gradient = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, 400);
+  gradient.addColorStop(0, 'rgba(200,130,60,.08)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, W, H);
-  ctx.restore();
 
   // Заголовок
-  ctx.font = '52px serif';
+  ctx.font = 'bold 48px "Fredoka One",cursive';
+  ctx.fillStyle = '#d4a574';
   ctx.textAlign = 'center';
-  ctx.shadowColor = '#f59a23';
-  ctx.shadowBlur = 20;
-  ctx.fillText('🥐', W/2, 80);
+  ctx.shadowColor = 'rgba(0,0,0,.5)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('Grammar Bakery', W/2, 120);
   ctx.shadowBlur = 0;
-
-  ctx.font = 'bold 42px "Fredoka One",cursive';
-  ctx.fillStyle = '#ffd700';
-  ctx.shadowColor = 'rgba(0,0,0,.7)';
-  ctx.shadowBlur = 12;
-  ctx.fillText('Grammar Bakery!', W/2, 135);
-  ctx.shadowBlur = 0;
-
-  ctx.font = 'bold 14px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,220,160,.9)';
-  ctx.fillText('Catch the right croissants!', W/2, 165);
-
-  // ИСПРАВЛЕНО: Карточки уровней с правильным позиционированием
-  const cardWidth = 360;
-  const cardHeight = 90;
-  const cardStartX = (W - cardWidth) / 2;
-  const card1Y = 195;
-  const card2Y = 295;
   
-  // Карточка Level 1
+  ctx.font = '16px Nunito,sans-serif';
+  ctx.fillStyle = 'rgba(212,165,116,.6)';
+  ctx.fillText('Catch the croissants', W/2, 150);
+
+  // Разделительная линия
+  ctx.strokeStyle = 'rgba(212,165,116,.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W/2 - 100, 175);
+  ctx.lineTo(W/2 + 100, 175);
+  ctx.stroke();
+
+  // Карточки уровней (минималистичные)
+  const cardWidth = 320;
+  const cardHeight = 75;
+  const cardX = (W - cardWidth) / 2;
+  
+  // Level 1
   ctx.save();
-  ctx.fillStyle = 'rgba(224,123,57,.25)';
-  roundRect(ctx, cardStartX, card1Y, cardWidth, cardHeight, 16);
+  ctx.fillStyle = 'rgba(224,123,57,.15)';
+  roundRect(ctx, cardX, 220, cardWidth, cardHeight, 12);
   ctx.fill();
   
-  ctx.strokeStyle = '#e07b39';
-  ctx.lineWidth = 3;
-  roundRect(ctx, cardStartX, card1Y, cardWidth, cardHeight, 16);
+  ctx.strokeStyle = 'rgba(224,123,57,.4)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardX, 220, cardWidth, cardHeight, 12);
   ctx.stroke();
   
-  ctx.font = 'bold 22px "Fredoka One",cursive';
+  ctx.font = 'bold 20px "Fredoka One",cursive';
   ctx.fillStyle = '#e07b39';
   ctx.textAlign = 'left';
-  ctx.fillText('🟢 Level 1', cardStartX + 20, card1Y + 35);
+  ctx.fillText('Level 1', cardX + 25, 250);
   
-  ctx.font = 'bold 13px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,230,200,.9)';
-  ctx.fillText('She ___ (verbs with -s/-es)', cardStartX + 20, card1Y + 60);
-  
-  ctx.font = '12px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,200,150,.7)';
-  ctx.fillText('Catch correct verb forms!', cardStartX + 20, card1Y + 78);
+  ctx.font = '13px Nunito,sans-serif';
+  ctx.fillStyle = 'rgba(255,230,200,.7)';
+  ctx.fillText('She ___ (verbs with -s/-es)', cardX + 25, 275);
   ctx.restore();
   
-  // Карточка Level 2
+  // Level 2
   ctx.save();
-  ctx.fillStyle = 'rgba(192,57,43,.25)';
-  roundRect(ctx, cardStartX, card2Y, cardWidth, cardHeight, 16);
+  ctx.fillStyle = 'rgba(192,57,43,.15)';
+  roundRect(ctx, cardX, 315, cardWidth, cardHeight, 12);
   ctx.fill();
   
-  ctx.strokeStyle = '#c0392b';
-  ctx.lineWidth = 3;
-  roundRect(ctx, cardStartX, card2Y, cardWidth, cardHeight, 16);
+  ctx.strokeStyle = 'rgba(192,57,43,.4)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardX, 315, cardWidth, cardHeight, 12);
   ctx.stroke();
   
-  ctx.font = 'bold 22px "Fredoka One",cursive';
+  ctx.font = 'bold 20px "Fredoka One",cursive';
   ctx.fillStyle = '#c0392b';
   ctx.textAlign = 'left';
-  ctx.fillText('🟡 Level 2', cardStartX + 20, card2Y + 35);
+  ctx.fillText('Level 2', cardX + 25, 345);
   
-  ctx.font = 'bold 13px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,230,200,.9)';
-  ctx.fillText("She doesn't ___ (base form)", cardStartX + 20, card2Y + 60);
-  
-  ctx.font = '12px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,200,150,.7)';
-  ctx.fillText('Catch verbs WITHOUT -s!', cardStartX + 20, card2Y + 78);
+  ctx.font = '13px Nunito,sans-serif';
+  ctx.fillStyle = 'rgba(255,230,200,.7)';
+  ctx.fillText("She doesn't ___ (base form)", cardX + 25, 370);
   ctx.restore();
 
-  // Кнопка Play
-  drawButton(W/2 - 110, 420, 220, 60, '▶  PLAY NOW!', '#e07b39', '#c0392b', '#fff', 'PLAY');
+  // Кнопка Play (минималистичная)
+  ctx.save();
+  ctx.fillStyle = 'rgba(224,123,57,.9)';
+  roundRect(ctx, W/2 - 100, 450, 200, 50, 25);
+  ctx.fill();
   
+  ctx.font = 'bold 18px "Fredoka One",cursive';
+  ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
-  ctx.font = '12px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,200,150,.6)';
-  ctx.fillText('Use mouse or arrow keys to move', W/2, 495);
+  ctx.fillText('▶ PLAY', W/2, 482);
+  ctx.restore();
+  
+  buttons['PLAY'] = { x: W/2 - 100, y: 450, w: 200, h: 50 };
+
   ctx.textAlign = 'left';
 }
 
@@ -1164,10 +1184,11 @@ function loop(timestamp) {
   const targetX = Math.max(0, Math.min(W - CONFIG.basketWidth - 2, mouseX - CONFIG.basketWidth/2));
   basketX += (targetX - basketX) * 0.18 * dt;
 
-  const cy1 = CONFIG.basketY + 2;
-  const cy2 = CONFIG.basketY + 22;
-  const cx1 = basketX + 6;
-  const cx2 = basketX + CONFIG.basketWidth - 6;
+  // ИСПРАВЛЕНО: Зона ловли теперь точно по корзине
+  const cy1 = CONFIG.basketY + 5; // Верх корзины
+  const cy2 = CONFIG.basketY + CONFIG.basketHeight - 5; // Низ корзины
+  const cx1 = basketX + 8; // Левый край корзины
+  const cx2 = basketX + CONFIG.basketWidth - 8; // Правый край корзины
 
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
@@ -1177,6 +1198,7 @@ function loop(timestamp) {
     const bottom = w.y + w.h;
     const mid = w.x + w.w / 2;
     
+    // ИСПРАВЛЕНО: Проверяем попадает ли круассан в корзину
     if (bottom >= cy1 && w.y <= cy2 && mid >= cx1 && mid <= cx2) {
       words.splice(i, 1);
       onCatch(w);
@@ -1234,20 +1256,20 @@ window.addEventListener('keyup', e => {
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.clientX - rect.left) * (W / rect.width);
-  mouseY = (e.clientY - rect.top) * (H / rect.height); // ИСПРАВЛЕНО: отслеживание Y
+  mouseY = (e.clientY - rect.top) * (H / rect.height);
 });
 
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height); // ИСПРАВЛЕНО
+  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
 }, { passive: false });
 
 canvas.addEventListener('touchstart', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height); // ИСПРАВЛЕНО
+  mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
 }, { passive: true });
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
