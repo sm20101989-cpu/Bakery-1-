@@ -31,15 +31,17 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const W = 480, H = 640;
+
+// ========== ИСПРАВЛЕНО: БОЛЕЕ ШИРОКОЕ ПОЛЕ ==========
+const W = 560, H = 640;  // Было 480, стало 560 (+80 пикселей)
 canvas.width = W; canvas.height = H;
 
 const CONFIG = {
-  basketWidth: 110,
+  basketWidth: 120,      // Чуть шире корзина под новое поле
   basketHeight: 50,
   basketY: H - 90,
   catchY: H - 85,
-  maxWords: 5,
+  maxWords: 6,           // Больше слов на широком поле
   spawnInterval: 1050,
   baseSpeed: 1.7,
   levelTime: 60,
@@ -228,15 +230,15 @@ function drawBackground() {
 
   drawOvenWindow();
   drawShelf(10, 220, 120);
-  drawShelf(350, 220, 120);
+  drawShelf(W - 130, 220, 120);  // Адаптировано под ширину
   drawBreadItem(22, 207, '🍞');
   drawBreadItem(64, 207, '🥖');
-  drawBreadItem(362, 207, '🧁');
-  drawBreadItem(404, 207, '🍰');
+  drawBreadItem(W - 98, 207, '🧁');
+  drawBreadItem(W - 56, 207, '🍰');
   drawCounter();
-  drawLight(80, 0, 160);
+  drawLight(100, 0, 160);
   drawLight(W/2, 0, 155);
-  drawLight(W-80, 0, 162);
+  drawLight(W - 100, 0, 162);
   drawSign();
 }
 
@@ -363,6 +365,7 @@ function drawSign() {
   ctx.restore();
 }
 
+// ========== ИСПРАВЛЕНО: КРУАССАНЫ ЧУТЬ МЕНЬШЕ ==========
 function drawCroissantWord(word) {
   ctx.save();
   const cx = word.x + word.w / 2;
@@ -379,21 +382,22 @@ function drawCroissantWord(word) {
   cg.addColorStop(1, '#c47a15');
   ctx.fillStyle = cg;
   ctx.beginPath();
-  ctx.ellipse(0, 0, word.w/2, word.h/2, 0, 0, Math.PI * 2);
+  // Уменьшили размер круассана (было word.w/2, word.h/2)
+  ctx.ellipse(0, 0, word.w/2 - 3, word.h/2 - 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = '#d4860e';
   ctx.beginPath();
-  ctx.ellipse(-word.w/2 + 8, 0, 10, word.h/2 - 4, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(-word.w/2 + 8, 0, 8, word.h/2 - 5, 0.3, 0, Math.PI * 2);  // Чуть меньше
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(word.w/2 - 8, 0, 10, word.h/2 - 4, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(word.w/2 - 8, 0, 8, word.h/2 - 5, -0.3, 0, Math.PI * 2);  // Чуть меньше
   ctx.fill();
 
   ctx.fillStyle = 'rgba(255,230,100,.35)';
   ctx.beginPath();
-  ctx.ellipse(-word.w/8, -word.h/5, word.w/5, word.h/6, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(-word.w/8, -word.h/5, word.w/6, word.h/7, -0.3, 0, Math.PI * 2);  // Чуть меньше
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(150,70,0,.4)';
@@ -405,7 +409,7 @@ function drawCroissantWord(word) {
     ctx.stroke();
   }
 
-  ctx.font = 'bold 15px Nunito,sans-serif';
+  ctx.font = 'bold 14px Nunito,sans-serif';  // Чуть меньше шрифт (было 15px)
   ctx.fillStyle = '#3b1a00';
   ctx.shadowColor = 'rgba(255,200,80,.6)';
   ctx.shadowBlur = 4;
@@ -1110,15 +1114,11 @@ function loop(timestamp) {
   updateParticles();
   updateFloats();
 
-  // ============================================
-  // ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ПОРЯДОК ОТРИСОВКИ!
-  // Круассаны теперь ПЕРЕД корзиной (на переднем плане)
-  // ============================================
-  drawBasket();           // 1. Сначала корзина с пекарем
-  drawParticles();        // 2. Частицы
-  words.forEach(w => drawCroissantWord(w));  // 3. Круассаны ПОВЕРХ корзины!
-  drawFloats();           // 4. Всплывающий текст
-  drawHUD();              // 5. Интерфейс
+  drawBasket();
+  drawParticles();
+  words.forEach(w => drawCroissantWord(w));
+  drawFloats();
+  drawHUD();
 
   ctx.restore();
 }
