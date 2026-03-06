@@ -36,9 +36,11 @@ canvas.width = W; canvas.height = H;
 
 // ========== НАСТРОЙКИ ИГРЫ ==========
 const CONFIG = {
-  basketWidth: 110, // ИСПРАВЛЕНО: уменьшил ширину корзины
-  basketHeight: 50, // ИСПРАВЛЕНО: уменьшил высоту корзины
-  basketY: H - 110,
+  basketWidth: 110,
+  basketHeight: 50,
+  basketY: H - 100,
+  catchZoneTop: 20, // Где начинается зона ловли внутри корзины
+  catchZoneBottom: 45, // Где заканчивается зона ловли
   maxWords: 5,
   spawnInterval: 1050,
   baseSpeed: 1.7,
@@ -46,31 +48,60 @@ const CONFIG = {
   targetScore: 10
 };
 
-// ========== УРОВНИ ==========
+// ========== УРОВНИ С РАЗНЫМИ ПОДЛЕЖАЩИМИ ==========
 const LEVELS = [
   {
-    label: '🥐  She  ___',
-    color: '#e07b39',
     name: 'Level 1',
-    description: 'Catch verbs with -s / -es',
-    hint: 'Catch croissants with -s / -es !',
-    correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
-    wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
+    stages: [
+      { 
+        subject: "🥐  She  ___", 
+        hint: 'Catch verbs with -s / -es',
+        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
+      },
+      { 
+        subject: "🥐  He  ___", 
+        hint: 'Catch verbs with -s / -es',
+        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
+      },
+      { 
+        subject: "🥐  It  ___", 
+        hint: 'Catch verbs with -s / -es',
+        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
+      }
+    ]
   },
   {
-    label: "🥐  She doesn't  ___",
-    color: '#c0392b',
     name: 'Level 2',
-    description: 'Catch base form verbs',
-    hint: "Catch croissants WITHOUT -s !",
-    correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
-    wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
+    stages: [
+      { 
+        subject: "🥐  We  ___", 
+        hint: 'Catch base form (NO -s)',
+        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
+      },
+      { 
+        subject: "🥐  They  ___", 
+        hint: 'Catch base form (NO -s)',
+        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
+      },
+      { 
+        subject: "🥐  I  ___", 
+        hint: 'Catch base form (NO -s)',
+        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
+      }
+    ]
   }
 ];
 
 // ========== СОСТОЯНИЕ ИГРЫ ==========
 let state = 'START';
 let currentLevel = 0;
+let currentStage = 0; // Номер этапа внутри уровня
 let lives = 3;
 let score = 0;
 let caught = 0;
@@ -99,7 +130,7 @@ let savedStats = {};
 let buttons = {};
 let lastTime = 0;
 
-// ========== ЗАГРУЗКА ИЗОБРАЖЕНИЯ ПЕРСОНАЖА ==========
+// ========== ЗАГРУЗКА ИЗОБРАЖЕНИЯ ==========
 const bakerImg = new Image();
 bakerImg.src = 'baker.png';
 let bakerImgLoaded = false;
@@ -135,11 +166,15 @@ function resize() {
   canvas.style.height = (H * scale) + 'px';
 }
 
+function getCurrentStage() {
+  return LEVELS[currentLevel].stages[currentStage];
+}
+
 // ========== ПУЛ СЛОВ ==========
 function buildWordPool() {
-  const level = LEVELS[currentLevel];
-  const correct = shuffle([...level.correct]);
-  const wrong = shuffle([...level.wrong]);
+  const stage = getCurrentStage();
+  const correct = shuffle([...stage.correct]);
+  const wrong = shuffle([...stage.wrong]);
   const pool = [];
   
   for (let i = 0; i < 9; i++) {
@@ -424,7 +459,7 @@ function drawBasket() {
   ctx.save();
   ctx.translate(x, y);
   
-  // Левая рука (держит корзину слева)
+  // Левая рука
   ctx.strokeStyle = '#fdbf60';
   ctx.lineWidth = 10;
   ctx.lineCap = 'round';
@@ -433,7 +468,7 @@ function drawBasket() {
   ctx.lineTo(20, 15);
   ctx.stroke();
   
-  // Правая рука (держит корзину справа)
+  // Правая рука
   ctx.beginPath();
   ctx.moveTo(CONFIG.basketWidth - 15, -10);
   ctx.lineTo(CONFIG.basketWidth - 20, 15);
@@ -447,7 +482,7 @@ function drawBasket() {
   ctx.fill();
   ctx.restore();
 
-  // Корзина (уменьшенная)
+  // Корзина
   ctx.save();
   ctx.translate(x, y);
   
@@ -501,16 +536,17 @@ function drawBasket() {
   ctx.stroke();
   ctx.restore();
 
-  // Подпись с уровнем (на корзине)
-  const level = LEVELS[currentLevel];
-  ctx.font = 'bold 12px "Fredoka One",cursive';
-  const lw = ctx.measureText(level.label).width + 16;
+  // === ДИНАМИЧЕСКАЯ ПОДПИСЬ НА КОРЗИНЕ ===
+  const stage = getCurrentStage();
+  ctx.font = 'bold 11px "Fredoka One",cursive';
+  const label = stage.subject;
+  const lw = ctx.measureText(label).width + 12;
   const lx = x + CONFIG.basketWidth/2 - lw/2;
-  const ly = y + CONFIG.basketHeight/2 + 6;
+  const ly = y + CONFIG.basketHeight/2 + 5;
   
-  ctx.fillStyle = 'rgba(255,240,200,.95)';
+  ctx.fillStyle = 'rgba(255,240,200,.98)';
   ctx.textAlign = 'center';
-  ctx.fillText(level.label, x + CONFIG.basketWidth/2, ly);
+  ctx.fillText(label, x + CONFIG.basketWidth/2, ly);
   ctx.textAlign = 'left';
 }
 
@@ -594,7 +630,7 @@ function drawHUD() {
   ctx.font = 'bold 14px "Fredoka One",cursive';
   const nw = ctx.measureText(level.name).width + 30;
   const nx = (W - nw) / 2;
-  ctx.fillStyle = level.color + 'cc';
+  ctx.fillStyle = level.stages[currentStage].correct.length > 0 ? '#e07b39cc' : '#c0392bcc';
   roundRect(ctx, nx, 52, nw, 24, 12);
   ctx.fill();
   
@@ -602,7 +638,7 @@ function drawHUD() {
   ctx.textAlign = 'center';
   ctx.shadowColor = 'rgba(0,0,0,.4)';
   ctx.shadowBlur = 3;
-  ctx.fillText(level.name, W/2, 69);
+  ctx.fillText(level.name + ' • ' + (currentStage + 1) + '/' + level.stages.length, W/2, 69);
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
 
@@ -758,20 +794,16 @@ function drawStatBox(stats) {
   ctx.textAlign = 'left';
 }
 
-// ИСПРАВЛЕНО: Эстетичный стартовый экран с минималистичным дизайном
 function drawStartScreen() {
-  // Темный фон
   ctx.fillStyle = 'rgba(15,8,4,.92)';
   ctx.fillRect(0, 0, W, H);
   
-  // Легкий градиент
   const gradient = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, 400);
   gradient.addColorStop(0, 'rgba(200,130,60,.08)');
   gradient.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, W, H);
 
-  // Заголовок
   ctx.font = 'bold 48px "Fredoka One",cursive';
   ctx.fillStyle = '#d4a574';
   ctx.textAlign = 'center';
@@ -784,7 +816,6 @@ function drawStartScreen() {
   ctx.fillStyle = 'rgba(212,165,116,.6)';
   ctx.fillText('Catch the croissants', W/2, 150);
 
-  // Разделительная линия
   ctx.strokeStyle = 'rgba(212,165,116,.3)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -792,7 +823,6 @@ function drawStartScreen() {
   ctx.lineTo(W/2 + 100, 175);
   ctx.stroke();
 
-  // Карточки уровней (минималистичные)
   const cardWidth = 320;
   const cardHeight = 75;
   const cardX = (W - cardWidth) / 2;
@@ -815,7 +845,7 @@ function drawStartScreen() {
   
   ctx.font = '13px Nunito,sans-serif';
   ctx.fillStyle = 'rgba(255,230,200,.7)';
-  ctx.fillText('She ___ (verbs with -s/-es)', cardX + 25, 275);
+  ctx.fillText('She/He/It ___ (verbs with -s)', cardX + 25, 275);
   ctx.restore();
   
   // Level 2
@@ -836,10 +866,9 @@ function drawStartScreen() {
   
   ctx.font = '13px Nunito,sans-serif';
   ctx.fillStyle = 'rgba(255,230,200,.7)';
-  ctx.fillText("She doesn't ___ (base form)", cardX + 25, 370);
+  ctx.fillText('We/They/I ___ (base form)', cardX + 25, 370);
   ctx.restore();
 
-  // Кнопка Play (минималистичная)
   ctx.save();
   ctx.fillStyle = 'rgba(224,123,57,.9)';
   roundRect(ctx, W/2 - 100, 450, 200, 50, 25);
@@ -868,9 +897,10 @@ function drawCountdownScreen() {
   ctx.fillText(countdownNum === 0 ? 'GO!' : countdownNum, W/2, H/2 + 20);
   ctx.shadowBlur = 0;
   
+  const stage = getCurrentStage();
   ctx.font = 'bold 19px "Fredoka One",cursive';
   ctx.fillStyle = 'rgba(255,200,120,.9)';
-  ctx.fillText(LEVELS[currentLevel].hint, W/2, H/2 + 75);
+  ctx.fillText(stage.hint, W/2, H/2 + 75);
   ctx.textAlign = 'left';
 }
 
@@ -886,12 +916,13 @@ function drawLevelClearScreen() {
   ctx.fillStyle = '#ffd700';
   ctx.shadowColor = '#0008';
   ctx.shadowBlur = 10;
-  ctx.fillText('Level Clear!', W/2, 170);
+  ctx.fillText('Stage Clear!', W/2, 170);
   ctx.shadowBlur = 0;
   
   drawStatBox(savedStats);
   
-  const nextText = currentLevel + 1 >= LEVELS.length ? '🏆  Finish!' : 'Next Level  ➡';
+  const stage = getCurrentStage();
+  const nextText = currentStage + 1 >= stage.stages.length ? '🏆  Finish!' : 'Next Stage  ➡';
   drawButton(W/2 - 100, 500, 200, 52, nextText, '#e07b39', '#c0392b', '#fff', 'NEXT');
   ctx.textAlign = 'left';
 }
@@ -967,7 +998,7 @@ function onCatch(word) {
     
     if (caught >= CONFIG.targetScore) {
       clearIntervals();
-      setTimeout(doLevelClear, 250);
+      setTimeout(doStageClear, 250);
       return;
     }
   } else {
@@ -998,14 +1029,15 @@ function clearIntervals() {
 
 function startGame() {
   currentLevel = 0;
+  currentStage = 0;
   score = 0;
   bestStreak = 0;
   totalOk = 0;
   totalBad = 0;
-  beginLevel();
+  beginStage();
 }
 
-function beginLevel() {
+function beginStage() {
   lives = 3;
   caught = 0;
   streak = 0;
@@ -1048,28 +1080,37 @@ function beginLevel() {
   }, 850);
 }
 
-function getAccuracyPercent() {
-  const total = totalOk + totalBad;
-  return total ? Math.round(totalOk / total * 100) : 0;
-}
-
-function doLevelClear() {
+function doStageClear() {
   state = 'LEVELCLEAR';
+  const level = LEVELS[currentLevel];
   savedStats = {
+    'Stage': (currentStage + 1) + '/' + level.stages.length,
     'Score': '⭐ ' + score,
     'Accuracy': getAccuracyPercent() + '%',
-    'Best Streak': '🔥 ' + bestStreak,
-    'Time Left': '⏱ ' + timer + 's'
+    'Best Streak': '🔥 ' + bestStreak
   };
 }
 
-function doNextLevel() {
-  currentLevel++;
+function nextStage() {
+  const level = LEVELS[currentLevel];
+  currentStage++;
+  
+  if (currentStage >= level.stages.length) {
+    currentLevel++;
+    currentStage = 0;
+  }
+  
   if (currentLevel >= LEVELS.length) {
     doWin();
     return;
   }
-  beginLevel();
+  
+  beginStage();
+}
+
+function getAccuracyPercent() {
+  const total = totalOk + totalBad;
+  return total ? Math.round(totalOk / total * 100) : 0;
 }
 
 function doEnd(reason) {
@@ -1111,7 +1152,7 @@ function handleClick(cx, cy) {
     return;
   }
   if (state === 'LEVELCLEAR' && hitTest(cx, cy, buttons['NEXT'])) {
-    doNextLevel();
+    nextStage();
     return;
   }
   if (state === 'GAMEOVER') {
@@ -1184,11 +1225,11 @@ function loop(timestamp) {
   const targetX = Math.max(0, Math.min(W - CONFIG.basketWidth - 2, mouseX - CONFIG.basketWidth/2));
   basketX += (targetX - basketX) * 0.18 * dt;
 
-  // ИСПРАВЛЕНО: Зона ловли теперь точно по корзине
-  const cy1 = CONFIG.basketY + 5; // Верх корзины
-  const cy2 = CONFIG.basketY + CONFIG.basketHeight - 5; // Низ корзины
-  const cx1 = basketX + 8; // Левый край корзины
-  const cx2 = basketX + CONFIG.basketWidth - 8; // Правый край корзины
+  // ИСПРАВЛЕНО: ЗОНА ЛОВЛИ - точно внутри корзины
+  const catchTop = CONFIG.basketY + CONFIG.catchZoneTop;
+  const catchBottom = CONFIG.basketY + CONFIG.catchZoneBottom;
+  const catchLeft = basketX + 10;
+  const catchRight = basketX + CONFIG.basketWidth - 10;
 
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
@@ -1198,8 +1239,8 @@ function loop(timestamp) {
     const bottom = w.y + w.h;
     const mid = w.x + w.w / 2;
     
-    // ИСПРАВЛЕНО: Проверяем попадает ли круассан в корзину
-    if (bottom >= cy1 && w.y <= cy2 && mid >= cx1 && mid <= cx2) {
+    // Проверяем попадает ли круассан В корзину (не сверху, а внутрь)
+    if (bottom >= catchTop && bottom <= catchBottom && mid >= catchLeft && mid <= catchRight) {
       words.splice(i, 1);
       onCatch(w);
     } else if (w.y > H + 20) {
