@@ -28,20 +28,140 @@
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+
+<!-- ========== ЗВУКОВЫЕ ЭФФЕКТЫ ========== -->
+<audio id="soundCorrect" preload="auto">
+  <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU" type="audio/wav">
+</audio>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// ========== ИСПРАВЛЕНО: БОЛЕЕ ШИРОКОЕ ПОЛЕ ==========
-const W = 560, H = 640;  // Было 480, стало 560 (+80 пикселей)
+const W = 560, H = 640;
 canvas.width = W; canvas.height = H;
 
+// ========== ЗВУКОВАЯ СИСТЕМА ==========
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  
+  if (type === 'correct') {
+    // Триумфальный звук (мажорный аккорд)
+    const now = audioCtx.currentTime;
+    
+    // Нота 1 (C5)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.frequency.value = 523.25;
+    gain1.gain.setValueAtTime(0.3, now);
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc1.start(now);
+    osc1.stop(now + 0.3);
+    
+    // Нота 2 (E5)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.frequency.value = 659.25;
+    gain2.gain.setValueAtTime(0.3, now + 0.05);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    osc2.start(now + 0.05);
+    osc2.stop(now + 0.35);
+    
+    // Нота 3 (G5)
+    const osc3 = audioCtx.createOscillator();
+    const gain3 = audioCtx.createGain();
+    osc3.connect(gain3);
+    gain3.connect(audioCtx.destination);
+    osc3.frequency.value = 783.99;
+    gain3.gain.setValueAtTime(0.3, now + 0.1);
+    gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+    osc3.start(now + 0.1);
+    osc3.stop(now + 0.4);
+    
+  } else if (type === 'wrong') {
+    // Звук ошибки (нисходящий тон)
+    const now = audioCtx.currentTime;
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(200, now);
+    oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+    gainNode.gain.setValueAtTime(0.3, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+    
+  } else if (type === 'switch') {
+    // Звук смены режима (волшебный звон)
+    const now = audioCtx.currentTime;
+    
+    for (let i = 0; i < 5; i++) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 800 + i * 200;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.15, now + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.2);
+      osc.start(now + i * 0.08);
+      osc.stop(now + i * 0.08 + 0.2);
+    }
+    
+  } else if (type === 'win') {
+    // Победная фанфара
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'square';
+      gain.gain.setValueAtTime(0.2, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.4);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.4);
+    });
+    
+  } else if (type === 'gameover') {
+    // Звук проигрыша
+    const now = audioCtx.currentTime;
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(300, now);
+    oscillator.frequency.exponentialRampToValueAtTime(80, now + 0.5);
+    gainNode.gain.setValueAtTime(0.3, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    oscillator.start(now);
+    oscillator.stop(now + 0.5);
+  }
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+}
+
+// ============================================
+
 const CONFIG = {
-  basketWidth: 120,      // Чуть шире корзина под новое поле
+  basketWidth: 120,
   basketHeight: 50,
   basketY: H - 90,
   catchY: H - 85,
-  maxWords: 6,           // Больше слов на широком поле
+  maxWords: 6,
   spawnInterval: 1050,
   baseSpeed: 1.7,
   levelTime: 60,
@@ -153,6 +273,7 @@ function switchMode() {
   lastSwitchScore = score;
   pool = [];
   poolIndex = 0;
+  playSound('switch');
 }
 
 function buildWordPool() {
@@ -230,7 +351,7 @@ function drawBackground() {
 
   drawOvenWindow();
   drawShelf(10, 220, 120);
-  drawShelf(W - 130, 220, 120);  // Адаптировано под ширину
+  drawShelf(W - 130, 220, 120);
   drawBreadItem(22, 207, '🍞');
   drawBreadItem(64, 207, '🥖');
   drawBreadItem(W - 98, 207, '🧁');
@@ -365,7 +486,6 @@ function drawSign() {
   ctx.restore();
 }
 
-// ========== ИСПРАВЛЕНО: КРУАССАНЫ ЧУТЬ МЕНЬШЕ ==========
 function drawCroissantWord(word) {
   ctx.save();
   const cx = word.x + word.w / 2;
@@ -382,22 +502,21 @@ function drawCroissantWord(word) {
   cg.addColorStop(1, '#c47a15');
   ctx.fillStyle = cg;
   ctx.beginPath();
-  // Уменьшили размер круассана (было word.w/2, word.h/2)
   ctx.ellipse(0, 0, word.w/2 - 3, word.h/2 - 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = '#d4860e';
   ctx.beginPath();
-  ctx.ellipse(-word.w/2 + 8, 0, 8, word.h/2 - 5, 0.3, 0, Math.PI * 2);  // Чуть меньше
+  ctx.ellipse(-word.w/2 + 8, 0, 8, word.h/2 - 5, 0.3, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(word.w/2 - 8, 0, 8, word.h/2 - 5, -0.3, 0, Math.PI * 2);  // Чуть меньше
+  ctx.ellipse(word.w/2 - 8, 0, 8, word.h/2 - 5, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = 'rgba(255,230,100,.35)';
   ctx.beginPath();
-  ctx.ellipse(-word.w/8, -word.h/5, word.w/6, word.h/7, -0.3, 0, Math.PI * 2);  // Чуть меньше
+  ctx.ellipse(-word.w/8, -word.h/5, word.w/6, word.h/7, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(150,70,0,.4)';
@@ -409,7 +528,7 @@ function drawCroissantWord(word) {
     ctx.stroke();
   }
 
-  ctx.font = 'bold 14px Nunito,sans-serif';  // Чуть меньше шрифт (было 15px)
+  ctx.font = 'bold 14px Nunito,sans-serif';
   ctx.fillStyle = '#3b1a00';
   ctx.shadowColor = 'rgba(255,200,80,.6)';
   ctx.shadowBlur = 4;
@@ -560,6 +679,131 @@ function drawFallbackBaker(x, y) {
   ctx.strokeStyle = '#c87941';
   ctx.lineWidth = 2;
   ctx.strokeRect(x - 30, y - 40, 60, 50);
+}
+
+// ========== ОТРИСОВКА ПЕКАРЯ ДЛЯ СТАРТОВОГО ЭКРАНА ==========
+function drawStartBaker(x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  
+  // Тело
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(0, 20, 55, 60, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Голова
+  ctx.fillStyle = '#fdbf60';
+  ctx.beginPath();
+  ctx.arc(0, -50, 40, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Поварской колпак
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(0, -85, 45, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(-32, -90, 64, 25);
+  
+  // Улыбка
+  ctx.strokeStyle = '#8b4513';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(0, -45, 18, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  
+  // Усы
+  ctx.fillStyle = '#654321';
+  ctx.beginPath();
+  ctx.ellipse(-15, -38, 14, 5, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(15, -38, 14, 5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Глаза
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(-15, -58, 5, 0, Math.PI * 2);
+  ctx.arc(15, -58, 5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Блеск в глазах
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-13, -60, 2, 0, Math.PI * 2);
+  ctx.arc(17, -60, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Фартук
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-40, -10, 80, 65);
+  ctx.strokeStyle = '#c87941';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-40, -10, 80, 65);
+  
+  // Карман на фартуке
+  ctx.strokeStyle = '#c87941';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.rect(-15, 15, 30, 25);
+  ctx.stroke();
+  
+  // Руки с корзиной
+  ctx.strokeStyle = '#fdbf60';
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-35, 10);
+  ctx.lineTo(-25, 45);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(35, 10);
+  ctx.lineTo(25, 45);
+  ctx.stroke();
+  
+  // Кисти
+  ctx.fillStyle = '#fdbf60';
+  ctx.beginPath();
+  ctx.arc(-25, 45, 9, 0, Math.PI * 2);
+  ctx.arc(25, 45, 9, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Корзина
+  ctx.beginPath();
+  ctx.moveTo(-35, 50);
+  ctx.lineTo(35, 50);
+  ctx.lineTo(25, 90);
+  ctx.lineTo(-25, 90);
+  ctx.closePath();
+  
+  const basketGrad = ctx.createLinearGradient(0, 50, 0, 90);
+  basketGrad.addColorStop(0, '#c87941');
+  basketGrad.addColorStop(1, '#8b4513');
+  ctx.fillStyle = basketGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#5a2d0c';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Плетение корзины
+  ctx.strokeStyle = 'rgba(0,0,0,.2)';
+  ctx.lineWidth = 1;
+  for (let i = -25; i <= 25; i += 10) {
+    ctx.beginPath();
+    ctx.moveTo(i, 50);
+    ctx.lineTo(i + 3, 90);
+    ctx.stroke();
+  }
+  
+  // Ручка корзины
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(0, 50, 38, Math.PI, 0);
+  ctx.stroke();
+  
+  ctx.restore();
 }
 
 function drawHUD() {
@@ -751,6 +995,7 @@ function drawStatBox(stats) {
   ctx.textAlign = 'left';
 }
 
+// ========== ИСПРАВЛЕНО: СТАРТОВЫЙ ЭКРАН С ПЕКАРЕМ ==========
 function drawStartScreen() {
   ctx.fillStyle = 'rgba(15,8,4,.92)';
   ctx.fillRect(0, 0, W, H);
@@ -761,44 +1006,53 @@ function drawStartScreen() {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, W, H);
 
+  // Заголовок
   ctx.font = 'bold 48px "Fredoka One",cursive';
   ctx.fillStyle = '#d4a574';
   ctx.textAlign = 'center';
   ctx.shadowColor = 'rgba(0,0,0,.5)';
   ctx.shadowBlur = 10;
-  ctx.fillText('Grammar Bakery', W/2, 120);
+  ctx.fillText('Grammar Bakery', W/2, 90);
   ctx.shadowBlur = 0;
   
   ctx.font = '16px Nunito,sans-serif';
   ctx.fillStyle = 'rgba(212,165,116,.6)';
-  ctx.fillText('Catch the croissants', W/2, 150);
+  ctx.fillText('Catch the croissants', W/2, 120);
 
   ctx.strokeStyle = 'rgba(212,165,116,.3)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(W/2 - 100, 175);
-  ctx.lineTo(W/2 + 100, 175);
+  ctx.moveTo(W/2 - 100, 145);
+  ctx.lineTo(W/2 + 100, 145);
   ctx.stroke();
 
+  // ========== ПЕКАРЬ НА СТАРТОВОМ ЭКРАНЕ ==========
+  drawStartBaker(W/2, 260, 0.9);
+
+  // Информация о режимах
   ctx.font = '13px Nunito,sans-serif';
   ctx.fillStyle = 'rgba(255,230,200,.8)';
   ctx.textAlign = 'center';
-  ctx.fillText('Modes alternate every 5 points!', W/2, 210);
-  ctx.fillText('She/He/It (-s) ↔ We/They/I (base)', W/2, 235);
+  ctx.fillText('Modes alternate every 5 points!', W/2, 390);
+  ctx.fillText('She/He/It (-s) ↔ We/They/I (base)', W/2, 415);
   ctx.textAlign = 'left';
 
+  // Кнопка PLAY
   ctx.save();
   ctx.fillStyle = 'rgba(224,123,57,.9)';
-  roundRect(ctx, W/2 - 100, 450, 200, 50, 25);
+  roundRect(ctx, W/2 - 100, 450, 200, 55, 28);
   ctx.fill();
   
-  ctx.font = 'bold 18px "Fredoka One",cursive';
+  ctx.font = 'bold 20px "Fredoka One",cursive';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
-  ctx.fillText('▶ PLAY', W/2, 482);
+  ctx.shadowColor = 'rgba(0,0,0,.4)';
+  ctx.shadowBlur = 8;
+  ctx.fillText('▶ PLAY', W/2, 485);
+  ctx.shadowBlur = 0;
   ctx.restore();
   
-  buttons['PLAY'] = { x: W/2 - 100, y: 450, w: 200, h: 50 };
+  buttons['PLAY'] = { x: W/2 - 100, y: 450, w: 200, h: 55 };
 
   ctx.textAlign = 'left';
 }
@@ -895,8 +1149,12 @@ function onCatch(word) {
     burst(fx, CONFIG.catchY, '#ffd700');
     flashTimer = 12;
     
+    // ЗВУК ПРАВИЛЬНОГО ОТВЕТА
+    playSound('correct');
+    
     if (caught >= CONFIG.targetScore) {
       clearIntervals();
+      playSound('win');
       setTimeout(doWin, 250);
       return;
     }
@@ -911,8 +1169,12 @@ function onCatch(word) {
     flashTimer = -12;
     shakeTimer = 16;
     
+    // ЗВУК ОШИБКИ
+    playSound('wrong');
+    
     if (lives <= 0) {
       clearIntervals();
+      playSound('gameover');
       setTimeout(() => doEnd('lives'), 250);
       return;
     }
