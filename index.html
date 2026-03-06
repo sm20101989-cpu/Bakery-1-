@@ -37,66 +37,50 @@ canvas.width = W; canvas.height = H;
 const CONFIG = {
   basketWidth: 110,
   basketHeight: 50,
-  basketY: H - 100,
+  basketY: H - 90,
+  catchY: H - 85, // ТОЧКА ЛОВЛИ - точно где отверстие корзины
   maxWords: 5,
   spawnInterval: 1050,
   baseSpeed: 1.7,
   levelTime: 60,
-  targetScore: 10
+  targetScore: 10,
+  switchScore: 5 // Меняем режим каждые 5 очков
 };
 
-const LEVELS = [
-  {
-    name: 'Level 1',
-    stages: [
-      { 
-        subject: "🥐  She  ___", 
-        hint: 'Catch verbs with -s / -es',
-        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
-        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
-      },
-      { 
-        subject: "🥐  He  ___", 
-        hint: 'Catch verbs with -s / -es',
-        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
-        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
-      },
-      { 
-        subject: "🥐  It  ___", 
-        hint: 'Catch verbs with -s / -es',
-        correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
-        wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try']
-      }
-    ]
+// Чередующиеся режимы
+const MODES = [
+  { 
+    subject: "🥐  She  ___", 
+    hint: 'Catch verbs with -s / -es',
+    correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+    wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+    color: '#e07b39'
   },
-  {
-    name: 'Level 2',
-    stages: [
-      { 
-        subject: "🥐  We  ___", 
-        hint: 'Catch base form (NO -s)',
-        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
-        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
-      },
-      { 
-        subject: "🥐  They  ___", 
-        hint: 'Catch base form (NO -s)',
-        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
-        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
-      },
-      { 
-        subject: "🥐  I  ___", 
-        hint: 'Catch base form (NO -s)',
-        correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
-        wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries']
-      }
-    ]
+  { 
+    subject: "🥐  We  ___", 
+    hint: 'Catch base form (NO -s)',
+    correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+    wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+    color: '#c0392b'
+  },
+  { 
+    subject: "🥐  He  ___", 
+    hint: 'Catch verbs with -s / -es',
+    correct: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+    wrong: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+    color: '#e07b39'
+  },
+  { 
+    subject: "🥐  They  ___", 
+    hint: 'Catch base form (NO -s)',
+    correct: ['like', 'play', 'watch', 'go', 'study', 'read', 'run', 'dance', 'sing', 'teach', 'fix', 'try'],
+    wrong: ['likes','plays','watches','goes','studies','reads','runs','dances','sings','teaches','fixes','tries'],
+    color: '#c0392b'
   }
 ];
 
 let state = 'START';
-let currentLevel = 0;
-let currentStage = 0;
+let currentMode = 0;
 let lives = 3;
 let score = 0;
 let caught = 0;
@@ -123,6 +107,7 @@ let countdownNum = 3;
 let savedStats = {};
 let buttons = {};
 let lastTime = 0;
+let lastSwitchScore = 0;
 
 const bakerImg = new Image();
 bakerImg.src = 'baker.png';
@@ -158,14 +143,22 @@ function resize() {
   canvas.style.height = (H * scale) + 'px';
 }
 
-function getCurrentStage() {
-  return LEVELS[currentLevel].stages[currentStage];
+function getCurrentMode() {
+  return MODES[currentMode];
+}
+
+function switchMode() {
+  currentMode = (currentMode + 1) % MODES.length;
+  lastSwitchScore = score;
+  // Очищаем пул и создаем новый для нового режима
+  pool = [];
+  poolIndex = 0;
 }
 
 function buildWordPool() {
-  const stage = getCurrentStage();
-  const correct = shuffle([...stage.correct]);
-  const wrong = shuffle([...stage.wrong]);
+  const mode = getCurrentMode();
+  const correct = shuffle([...mode.correct]);
+  const wrong = shuffle([...mode.wrong]);
   const pool = [];
   
   for (let i = 0; i < 9; i++) {
@@ -197,7 +190,7 @@ function spawnWord() {
   const item = getNextWord();
   const width = measureTextWidth(item.text);
   const x = 12 + Math.random() * (W - width - 24);
-  const speed = CONFIG.baseSpeed + (currentLevel * 0.5) + Math.random() * 0.8;
+  const speed = CONFIG.baseSpeed + Math.random() * 0.8;
   
   words.push({
     text: item.text,
@@ -441,6 +434,7 @@ function drawBasket() {
   }
   ctx.restore();
 
+  // Руки
   ctx.save();
   ctx.translate(x, y);
   
@@ -464,6 +458,7 @@ function drawBasket() {
   ctx.fill();
   ctx.restore();
 
+  // Корзина
   ctx.save();
   ctx.translate(x, y);
   
@@ -499,6 +494,7 @@ function drawBasket() {
   }
   ctx.restore();
 
+  // Ручка
   ctx.save();
   ctx.translate(x, y);
   ctx.strokeStyle = '#8b6914';
@@ -515,15 +511,14 @@ function drawBasket() {
   ctx.stroke();
   ctx.restore();
 
-  const stage = getCurrentStage();
+  // Подпись НА корзине (внутри)
+  const mode = getCurrentMode();
   ctx.font = 'bold 11px "Fredoka One",cursive';
-  const label = stage.subject;
-  const lw = ctx.measureText(label).width + 12;
-  const ly = y + CONFIG.basketHeight/2 + 5;
+  const label = mode.subject;
   
   ctx.fillStyle = 'rgba(255,240,200,.98)';
   ctx.textAlign = 'center';
-  ctx.fillText(label, x + CONFIG.basketWidth/2, ly);
+  ctx.fillText(label, x + CONFIG.basketWidth/2, y + CONFIG.basketHeight/2 + 5);
   ctx.textAlign = 'left';
 }
 
@@ -601,34 +596,26 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
 
-  const level = LEVELS[currentLevel];
-  ctx.font = 'bold 14px "Fredoka One",cursive';
-  const nw = ctx.measureText(level.name).width + 30;
-  const nx = (W - nw) / 2;
-  ctx.fillStyle = level.stages[currentStage].correct.length > 0 ? '#e07b39cc' : '#c0392bcc';
-  roundRect(ctx, nx, 52, nw, 24, 12);
-  ctx.fill();
+  // Прогресс до смены режима
+  const nextSwitch = lastSwitchScore + CONFIG.switchScore;
+  const progress = Math.min(1, (score - lastSwitchScore) / CONFIG.switchScore);
   
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0,0,0,.4)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(level.name + ' • ' + (currentStage + 1) + '/' + level.stages.length, W/2, 69);
-  ctx.textAlign = 'left';
-  ctx.shadowBlur = 0;
-
   ctx.fillStyle = 'rgba(255,255,255,.15)';
   roundRect(ctx, 14, 73, W - 28, 7, 4);
   ctx.fill();
   
-  if (caught > 0) {
-    const pg = ctx.createLinearGradient(14, 0, 14 + (W - 28) * (caught/10), 0);
-    pg.addColorStop(0, '#ffd700');
-    pg.addColorStop(1, '#e07b39');
-    roundRect(ctx, 14, 73, Math.max(8, (W - 28) * caught/10), 7, 4);
-    ctx.fillStyle = pg;
-    ctx.fill();
-  }
+  const pg = ctx.createLinearGradient(14, 0, 14 + (W - 28) * progress, 0);
+  pg.addColorStop(0, getCurrentMode().color);
+  pg.addColorStop(1, MODES[(currentMode + 1) % MODES.length].color);
+  roundRect(ctx, 14, 73, (W - 28) * progress, 7, 4);
+  ctx.fillStyle = pg;
+  ctx.fill();
+  
+  ctx.font = 'bold 10px Nunito,sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,.7)';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Next: ${nextSwitch} pts`, W/2, 72);
+  ctx.textAlign = 'left';
 
   if (streak >= 2) {
     ctx.font = 'bold 13px "Fredoka One",cursive';
@@ -796,49 +783,12 @@ function drawStartScreen() {
   ctx.lineTo(W/2 + 100, 175);
   ctx.stroke();
 
-  const cardWidth = 320;
-  const cardHeight = 75;
-  const cardX = (W - cardWidth) / 2;
-  
-  ctx.save();
-  ctx.fillStyle = 'rgba(224,123,57,.15)';
-  roundRect(ctx, cardX, 220, cardWidth, cardHeight, 12);
-  ctx.fill();
-  
-  ctx.strokeStyle = 'rgba(224,123,57,.4)';
-  ctx.lineWidth = 2;
-  roundRect(ctx, cardX, 220, cardWidth, cardHeight, 12);
-  ctx.stroke();
-  
-  ctx.font = 'bold 20px "Fredoka One",cursive';
-  ctx.fillStyle = '#e07b39';
-  ctx.textAlign = 'left';
-  ctx.fillText('Level 1', cardX + 25, 250);
-  
   ctx.font = '13px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,230,200,.7)';
-  ctx.fillText('She/He/It ___ (verbs with -s)', cardX + 25, 275);
-  ctx.restore();
-  
-  ctx.save();
-  ctx.fillStyle = 'rgba(192,57,43,.15)';
-  roundRect(ctx, cardX, 315, cardWidth, cardHeight, 12);
-  ctx.fill();
-  
-  ctx.strokeStyle = 'rgba(192,57,43,.4)';
-  ctx.lineWidth = 2;
-  roundRect(ctx, cardX, 315, cardWidth, cardHeight, 12);
-  ctx.stroke();
-  
-  ctx.font = 'bold 20px "Fredoka One",cursive';
-  ctx.fillStyle = '#c0392b';
+  ctx.fillStyle = 'rgba(255,230,200,.8)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Modes alternate every 5 points!', W/2, 210);
+  ctx.fillText('She/He/It (-s) ↔ We/They/I (base)', W/2, 235);
   ctx.textAlign = 'left';
-  ctx.fillText('Level 2', cardX + 25, 345);
-  
-  ctx.font = '13px Nunito,sans-serif';
-  ctx.fillStyle = 'rgba(255,230,200,.7)';
-  ctx.fillText('We/They/I ___ (base form)', cardX + 25, 370);
-  ctx.restore();
 
   ctx.save();
   ctx.fillStyle = 'rgba(224,123,57,.9)';
@@ -868,33 +818,10 @@ function drawCountdownScreen() {
   ctx.fillText(countdownNum === 0 ? 'GO!' : countdownNum, W/2, H/2 + 20);
   ctx.shadowBlur = 0;
   
-  const stage = getCurrentStage();
+  const mode = getCurrentMode();
   ctx.font = 'bold 19px "Fredoka One",cursive';
-  ctx.fillStyle = 'rgba(255,200,120,.9)';
-  ctx.fillText(stage.hint, W/2, H/2 + 75);
-  ctx.textAlign = 'left';
-}
-
-function drawLevelClearScreen() {
-  ctx.fillStyle = 'rgba(10,30,10,.86)';
-  ctx.fillRect(0, 0, W, H);
-  
-  ctx.font = '62px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('🎉', W/2, 110);
-  
-  ctx.font = 'bold 48px "Fredoka One",cursive';
-  ctx.fillStyle = '#ffd700';
-  ctx.shadowColor = '#0008';
-  ctx.shadowBlur = 10;
-  ctx.fillText('Stage Clear!', W/2, 170);
-  ctx.shadowBlur = 0;
-  
-  drawStatBox(savedStats);
-  
-  const level = LEVELS[currentLevel];
-  const nextText = currentStage + 1 >= level.stages.length ? '🏆  Finish!' : 'Next Stage  ➡';
-  drawButton(W/2 - 100, 500, 200, 52, nextText, '#e07b39', '#c0392b', '#fff', 'NEXT');
+  ctx.fillStyle = mode.color;
+  ctx.fillText(mode.hint, W/2, H/2 + 75);
   ctx.textAlign = 'left';
 }
 
@@ -936,7 +863,7 @@ function drawWinScreen() {
   ctx.shadowBlur = 0;
   
   ctx.font = '28px serif';
-  ctx.fillText('🥐 🥐 🥐', W/2, 235);
+  ctx.fillText('🥐 🥐 ', W/2, 235);
   
   drawStatBox(savedStats);
   drawButton(W/2 - 110, 495, 220, 50, '🎮  Play Again', '#e07b39', '#c0392b', '#fff', 'RETRY');
@@ -946,7 +873,7 @@ function drawWinScreen() {
 
 function onCatch(word) {
   const fx = basketX + CONFIG.basketWidth/2;
-  const fy = CONFIG.basketY - 30;
+  const fy = CONFIG.catchY - 30;
   
   if (word.ok) {
     score += 10;
@@ -956,6 +883,12 @@ function onCatch(word) {
     
     if (streak > bestStreak) bestStreak = streak;
     
+    // Проверяем нужно ли сменить режим
+    if (score >= lastSwitchScore + CONFIG.switchScore && score < 50) {
+      switchMode();
+      addFloat('MODE SWITCH!', '#ffd700', fx, fy - 30);
+    }
+    
     let msg = '+10 🥐';
     if (streak >= 5) {
       score += 20;
@@ -963,12 +896,12 @@ function onCatch(word) {
     }
     
     addFloat(msg, '#ffd700', fx, fy);
-    burst(fx, CONFIG.basketY, '#ffd700');
+    burst(fx, CONFIG.catchY, '#ffd700');
     flashTimer = 12;
     
     if (caught >= CONFIG.targetScore) {
       clearIntervals();
-      setTimeout(doStageClear, 250);
+      setTimeout(doWin, 250);
       return;
     }
   } else {
@@ -978,7 +911,7 @@ function onCatch(word) {
     totalBad++;
     
     addFloat('-5 ✗', '#ff6b6b', fx, fy);
-    burst(fx, CONFIG.basketY, '#ff1744');
+    burst(fx, CONFIG.catchY, '#ff1744');
     flashTimer = -12;
     shakeTimer = 16;
     
@@ -998,19 +931,19 @@ function clearIntervals() {
 }
 
 function startGame() {
-  currentLevel = 0;
-  currentStage = 0;
+  currentMode = 0;
   score = 0;
+  caught = 0;
+  streak = 0;
   bestStreak = 0;
   totalOk = 0;
   totalBad = 0;
-  beginStage();
+  lastSwitchScore = 0;
+  beginGame();
 }
 
-function beginStage() {
+function beginGame() {
   lives = 3;
-  caught = 0;
-  streak = 0;
   timer = CONFIG.levelTime;
   basketX = W/2 - CONFIG.basketWidth/2;
   mouseX = W/2;
@@ -1050,34 +983,6 @@ function beginStage() {
   }, 850);
 }
 
-function doStageClear() {
-  state = 'LEVELCLEAR';
-  const level = LEVELS[currentLevel];
-  savedStats = {
-    'Stage': (currentStage + 1) + '/' + level.stages.length,
-    'Score': '⭐ ' + score,
-    'Accuracy': getAccuracyPercent() + '%',
-    'Best Streak': '🔥 ' + bestStreak
-  };
-}
-
-function nextStage() {
-  const level = LEVELS[currentLevel];
-  currentStage++;
-  
-  if (currentStage >= level.stages.length) {
-    currentLevel++;
-    currentStage = 0;
-  }
-  
-  if (currentLevel >= LEVELS.length) {
-    doWin();
-    return;
-  }
-  
-  beginStage();
-}
-
 function getAccuracyPercent() {
   const total = totalOk + totalBad;
   return total ? Math.round(totalOk / total * 100) : 0;
@@ -1090,7 +995,8 @@ function doEnd(reason) {
     [reasonText]: '',
     'Score': '⭐ ' + score,
     'Accuracy': getAccuracyPercent() + '%',
-    'Best Streak': '🔥 ' + bestStreak
+    'Best Streak': '🔥 ' + bestStreak,
+    'Modes Completed': Math.floor(score / CONFIG.switchScore)
   };
 }
 
@@ -1100,7 +1006,8 @@ function doWin() {
     'Total Score': '⭐ ' + score,
     'Accuracy': getAccuracyPercent() + '%',
     'Best Streak': '🔥 ' + bestStreak,
-    'Correct Catches': '✅ ' + totalOk
+    'Correct Catches': '✅ ' + totalOk,
+    'Modes Switched': Math.floor(score / CONFIG.switchScore)
   };
 }
 
@@ -1118,10 +1025,6 @@ function hitTest(cx, cy, button) {
 function handleClick(cx, cy) {
   if (state === 'START' && hitTest(cx, cy, buttons['PLAY'])) {
     startGame();
-    return;
-  }
-  if (state === 'LEVELCLEAR' && hitTest(cx, cy, buttons['NEXT'])) {
-    nextStage();
     return;
   }
   if (state === 'GAMEOVER') {
@@ -1163,11 +1066,6 @@ function loop(timestamp) {
     drawCountdownScreen();
     return;
   }
-  if (state === 'LEVELCLEAR') {
-    drawBackground();
-    drawLevelClearScreen();
-    return;
-  }
   if (state === 'GAMEOVER') {
     drawBackground();
     drawGameOverScreen();
@@ -1194,26 +1092,23 @@ function loop(timestamp) {
   basketX += (targetX - basketX) * 0.18 * dt;
 
   // ============================================
-  // ИСПРАВЛЕНО: ЗОНА ЛОВЛИ - КРУАССАН ПАДАЕТ В ОТВЕРСТИЕ
+  // ИСПРАВЛЕНО: КРУАССАНЫ ПАДАЮТ ПРЯМО В КОРЗИНУ
   // ============================================
-  const catchLeft = basketX + 8;
-  const catchRight = basketX + CONFIG.basketWidth - 8;
-  const catchTop = CONFIG.basketY - 15; // Чуть выше верха корзины
-  const catchBottom = CONFIG.basketY + 25; // Внутри корзины
+  const catchLeft = basketX + 10;
+  const catchRight = basketX + CONFIG.basketWidth - 10;
+  const catchZone = CONFIG.catchY; // Точка где ловим
 
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i];
     w.y += w.speed * dt;
     w.angle += w.spin;
     
-    const bottom = w.y + w.h;
-    const top = w.y;
-    const center = w.y + w.h / 2;
-    const mid = w.x + w.w / 2;
+    const midX = w.x + w.w / 2;
+    const midY = w.y + w.h / 2;
     
-    // Проверяем: круассан пересекает верх корзины И находится по горизонтали внутри
-    if (center >= catchTop && center <= catchBottom && 
-        mid >= catchLeft && mid <= catchRight) {
+    // Ловим когда ЦЕНТР круассана достигает уровня корзины
+    if (midY >= catchZone - 5 && midY <= catchZone + 15 && 
+        midX >= catchLeft && midX <= catchRight) {
       words.splice(i, 1);
       onCatch(w);
     } else if (w.y > H + 20) {
